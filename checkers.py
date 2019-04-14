@@ -160,14 +160,14 @@ class Board:
                     if not longest_attack_path_global:
                         if self.color == WHITE:
                             if is_position_on_board(x - 1, y - 1) and y - 1 not in self.state[x - 1]:
-                                moves.append(Move(self.state[x][y], x, y, x - 1, y - 1))
+                                moves.append([Move(copy.deepcopy(self.state[x][y].set_crowned(will_get_crowned(self.color, x - 1))), x, y, x - 1, y - 1)])
                             if is_position_on_board(x - 1, y + 1) and y + 1 not in self.state[x - 1]:
-                                moves.append(Move(self.state[x][y], x, y, x - 1, y + 1))
+                                moves.append([Move(copy.deepcopy(self.state[x][y].set_crowned(will_get_crowned(self.color, x - 1))), x, y, x - 1, y + 1)])
                         else:
                             if is_position_on_board(x + 1, y - 1) and y - 1 not in self.state[x + 1]:
-                                moves.append(Move(self.state[x][y], x, y, x + 1, y - 1))
+                                moves.append([Move(copy.deepcopy(self.state[x][y].set_crowned(will_get_crowned(self.color, x + 1))), x, y, x + 1, y - 1)])
                             if is_position_on_board(x + 1, y + 1) and y + 1 not in self.state[x + 1]:
-                                moves.append(Move(self.state[x][y], x, y, x + 1, y + 1))
+                                moves.append([Move(copy.deepcopy(self.state[x][y].set_crowned(will_get_crowned(self.color, x + 1))), x, y, x + 1, y + 1)])
 
         if longest_attack_path_global:
             return longest_attack_path_global
@@ -207,7 +207,7 @@ class Board:
         # undo the move on the top of move stack
         move = self.move_stack.pop()
 
-        fx, fy = move[len(move)-1].move_from
+        fx, fy = move[0].move_from
         tx, ty = move[len(move)-1].move_to
         del self.state[tx][ty]
         self.state[fx][fy] = move[len(move)-1].checker
@@ -221,17 +221,27 @@ class Board:
             return None
 
 
+class Utility:
+    def moves_to_string(self, moves):
+        s = ""
+        for move in moves:
+            if s != "":
+                s+= ","
+            for m in move:
+                s += str(m)
+        return s
+
 ###################
 ### ~ HELPERS ~ ###
 ###################
 def is_position_on_board(x, y):
     return 0 <= x < 10 and 0 <= y < 10
 
-def will_get_crowned(color: bool, y: int):
-    if color and y == 0:
+def will_get_crowned(color: bool, x: int):
+    if color and x == 0:
         return True
 
-    if not color and y == 9:
+    if not color and x == 9:
         return True
 
 def get_all_single_attacks(board: Board, color: bool, x: int, y: int) -> List[Move]:
@@ -267,19 +277,24 @@ def get_longest_attack_path_rek(board: Board, color: bool, x: int, y: int, moves
             if will_get_crowned(color, moves_so_far[len(moves_so_far)-1].move_to[0]):
                 moves_so_far[len(moves_so_far)-1].checker = moves_so_far[len(moves_so_far)-1].checker.set_crowned(True)
 
-        return moves_so_far
+        # Don't return nested empty arrays
+        if not moves_so_far:
+            return []
+        else:
+            return [moves_so_far]
     else:
         longest_path: List[List[Move]] = []
         for attack in all_single_attacks:
-            current_path = get_longest_attack_path_rek(board.push([attack]), color, attack.move_to[0], attack.move_to[1], moves_so_far + [attack])
-            if longest_path:
-                if len(current_path) > len(longest_path[0]):
-                    longest_path = [current_path]
+            board_copy = copy.deepcopy(board)
+            current_path = get_longest_attack_path_rek(board_copy.push([attack]), color, attack.move_to[0], attack.move_to[1], moves_so_far + [attack])
+            if longest_path and current_path:
+                if len(current_path[0]) > len(longest_path[0]):
+                    longest_path = current_path
                 else:
-                    if len(current_path) == len(longest_path[0]):
-                        longest_path.append(current_path)
+                    if len(current_path[0]) == len(longest_path[0]):
+                        longest_path.extend(current_path)
             else:
-                longest_path = [current_path]
+                longest_path = current_path
 
         return longest_path
 
