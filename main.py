@@ -1,17 +1,24 @@
 from checkers import Board
 
-b = Board()
+b = Board().set_board("..........,.o........,..........,.o........,..x.......,..........,..........,..........,..........,..........")
 print(b)
-[print(x) for x in b.legal_moves()]
+for move in b.legal_moves()[0]:
+    print("\n")
+    print("-------------------")
+    print("\n")
+    for m in move:
+        print(m)
+        print(b.push([m]))
+        print("\n")
 
 # for i in range(1000):
 #     print("---")
 #     b.push(b.legal_moves()[0])
 #     print(b)
 
-k = Board()
-print(k)
-k.push(k.legal_moves()[0])
-print(k)
-k.pop()
-print(k)
+#k = Board()
+#print(k)
+#k.push(k.legal_moves()[0])
+#print(k)
+#k.pop()
+#print(k)
