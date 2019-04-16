@@ -87,39 +87,59 @@ class Board:
             s += "\n"
         return s
 
-    def set_board(self, fen: str):
-        # init empty
-        self.state = {}
-        for i in range(10):
-            self.state[i] = {}
+    def set_board(self, notation: str):
+        self.clear_board()
 
-        # fill
-        for x, row in enumerate(fen.split(",")):
+        for x, row in enumerate(notation.split(",")):
             for y, state in enumerate(row):
                 if state == "x":
                     ch = Checker(WHITE)
                     self.state[x][y] = ch
-                    continue
-
-                if state == "X":
+                elif state == "X":
                     ch = Checker(WHITE)
                     ch.crowned = True
                     self.state[x][y] = ch
-                    continue
-
-                if state == "o":
+                elif state == "o":
                     ch = Checker(BLACK)
                     self.state[x][y] = ch
-                    continue
-
-                if state == "O":
+                elif state == "O":
                     ch = Checker(BLACK)
                     ch.crowned = True
                     self.state[x][y] = ch
-                    continue
-        return self
+                elif state == ".":
+                    pass
+                else:
+                    raise ValueError("Invalid character in notation: " + str(state))
 
+    def get_board(self):
+        s = ""
+        first = True
+        for row in range(0, 10):
+            if not first:
+                s += ","
+            first = False
 
+            if len(self.state[row]) == 0:
+                continue
+
+            for col in range(0, 10):
+                if col in self.state[row]:
+                    s += str(self.state[row][col])
+                else:
+                    s += "."
+        return s
+
+    def clear_board(self):
+        """
+        Empties the board (removes all checkers), clears move stack and sets player color to WHITE.
+        :return:
+        """
+        self.state.clear()
+        for i in range(10):
+            self.state[i] = {}
+
+        self.move_stack.clear()
+        self.color = WHITE
 
     def legal_moves(self):
         """
