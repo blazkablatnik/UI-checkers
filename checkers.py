@@ -1,3 +1,4 @@
+import copy
 from typing import List, Dict
 
 WHITE = True    # X
@@ -175,38 +176,57 @@ class Board:
         TODO doc
         :return:
         """
-        moves: List[List[Move]] = []
+        normal_moves: List[List[Move]] = []
+        longest_jump_chains_global: List[List[Move]] = [[]]
 
-        for y, rows in self.state.items():
-            for x, checker in rows.items():
+        for y, rows in list(self.state.items()):
+            for x, checker in list(rows.items()):
                 # generate moves for current player
                 if checker.color == self.color:
 
-                    # check for moves when a checker can do a jump and remove other player's checker.
-                    # By international checkers ruleset, jumps can be done in all four directions (backwards too!).
-                    # Additionally, jumps can also be chained together, and if there's another jump available, player
-                    # MUST perform it. By international ruleset, if there's a jump move available, player MUST perform
-                    # a jump, rather than a normal move.
-
+                    # player must perform either one of the longest jump chains available, or a normal move if no jumps
+                    # are available.
                     chains = get_longest_jump_chains(self, x, y, [], [[]])
-                    if len(chains) != 0 and len(chains[0]) != 0:
-                        # return list of longest chains
-                        return chains
-                    else:
+                    if len(chains[0]) > len(longest_jump_chains_global[0]):
+                        # store list of longer chains
+                        longest_jump_chains_global = chains
+                    elif len(chains[0]) == len(longest_jump_chains_global[0]):
+                        # if same sized chains, store both
+                        longest_jump_chains_global += chains
+
+                    if not checker.crowned:
                         # for default moves, white checkers go up (-y) diagonally,
                         # black checkers go down (+y) diagonally
                         if self.color == WHITE:
                             for (nx, ny) in [(x-1, y-1), (x+1, y-1)]:
                                 if is_position_on_board(nx, ny) and self.checker_at(nx, ny) is None:
-                                    chk = self.state[y][x]
-                                    moves.append([Move(chk, x, y, nx, ny, will_get_crowned(chk.color, ny))])
+                                    normal_moves.append([Move(checker, x, y, nx, ny, prom=will_get_crowned(checker.color, ny))])
                         else:
                             for (nx, ny) in [(x-1, y+1), (x+1, y+1)]:
                                 if is_position_on_board(nx, ny) and self.checker_at(nx, ny) is None:
-                                    chk = self.state[y][x]
-                                    moves.append([Move(chk, x, y, nx, ny, will_get_crowned(chk.color, ny))])
+                                    normal_moves.append([Move(checker, x, y, nx, ny, prom=will_get_crowned(checker.color, ny))])
+                    else: # checker.crowned
+                        # crowned checkers can move along diagonal, however they can't jump over their own checkers
+                        # (if checkers on diagonal are of other color, that's classified as jump and not a normal move!)
 
-        return moves
+                        # [up-left, up-right, down-left, down-right]
+                        for (nx, ny) in [(-1, -1), (+1, -1), (-1, +1), (+1, +1)]:
+                            tx, ty = x, y
+                            while 0 < tx < 9 and 0 < ty < 9:
+                                tx = tx + nx
+                                ty = ty + ny
+                                if self.checker_at(tx, ty) is not None:
+                                    break
+                                normal_moves.append([Move(checker, x, y, tx, ty, prom=will_get_crowned(checker.color, ty))])
+
+        if len(longest_jump_chains_global[0]) > 0:
+            for chain in longest_jump_chains_global:
+                # last move in a chain can result in crowning
+                last_move = chain[-1]
+                last_move.is_promotion = will_get_crowned(last_move.checker.color, last_move.move_to[1])
+            return longest_jump_chains_global
+
+        return normal_moves
 
     def push(self, move: List[Move]):
         """
@@ -296,7 +316,20 @@ def will_get_crowned(color: bool, y: int) -> bool:
     return False
 
 
+def get_diagonal_positions(x: int, y: int):
+    """
+    Returns all diagonal positions of (x, y)
+    """
+    # top-left to bottom-right
+    d1 = [(x, y) for (x, y) in zip(range(0, 10), range(max(x - y, y - x), 10))]
+    # bottom-left to top-right
+    d2 = [(x, y) for (x, y) in zip(range(0, 10), range(y + x, -1, -1))]
+    return d1 + d2
+
 def can_perform_jump(board: Board, x: int, y: int, jx: int, jy: int) -> bool:
+    """
+    Checks for all possible conditions if jump can be performed from (x,y) to (jx,jy).
+    """
     checker = board.checker_at(x, y)
     if checker is None:
         # obviously, jump should be performed with a checker
@@ -320,10 +353,8 @@ def can_perform_jump(board: Board, x: int, y: int, jx: int, jy: int) -> bool:
             return False
 
     else: # checker.crowned
-        # TODO: crowned checkers can jump any distance, however they can jump only over one checker and must jump to
-        # the field right after removed checker
-
-        # TODO: not sure about above will check the rules
+        # jump can be performed if there's checker of other color on crowned checker's diagonal
+        # TODO: crowned checkers can jump any distance, stopping anywhere beyond the diagonal of last jumped checker
         pass
 
 
@@ -337,11 +368,18 @@ def get_possible_jumps(board: Board, x: int, y: int) -> List[Move]:
     """
     moves: List[Move] = []
 
-    # Positions in list: [upper-left, bottom-left, upper-right, bottom-right]
-    for (jx, jy) in [(x-2, y-2), (x-2, y+2), (x+2, y-2), (x+2, y+2)]:
-        if is_position_on_board(jx, jy) and can_perform_jump(board, x, y, jx, jy):
-            jumped_checker = board.checker_at((x + jx) // 2, (y + jy) // 2)
-            moves.append(Move(board.checker_at(x, y), x, y, jx, jy, removed=jumped_checker))
+    chk = board.checker_at(x, y)
+
+    if not chk.crowned:
+        # Positions in list: [upper-left, bottom-left, upper-right, bottom-right]
+        for (jx, jy) in [(x-2, y-2), (x-2, y+2), (x+2, y-2), (x+2, y+2)]:
+            if is_position_on_board(jx, jy) and can_perform_jump(board, x, y, jx, jy):
+                jumped_checker = board.checker_at((x + jx) // 2, (y + jy) // 2)
+                moves.append(Move(chk, x, y, jx, jy, removed=jumped_checker))
+
+    else:
+        # TODO crowned jumps
+        pass
 
     return moves
 

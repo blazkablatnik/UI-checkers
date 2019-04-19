@@ -86,6 +86,24 @@ class LegalMovesTests(unittest.TestCase):
         b.color = checkers.BLACK
         self.assertEqual("[[Move<o,f(4, 2),t(3, 3)>], [Move<o,f(4, 2),t(5, 3)>]]", str(b.legal_moves()))
 
+    def test_move_king_white(self):
+        b = Board()
+        b.set_board(",,.......X")
+        self.assertEqual("[[Move<X,f(7, 2),t(6, 1)>], [Move<X,f(7, 2),t(5, 0)>], [Move<X,f(7, 2),t(8, 1)>], "
+                         "[Move<X,f(7, 2),t(9, 0)>], [Move<X,f(7, 2),t(6, 3)>], [Move<X,f(7, 2),t(5, 4)>], "
+                         "[Move<X,f(7, 2),t(4, 5)>], [Move<X,f(7, 2),t(3, 6)>], [Move<X,f(7, 2),t(2, 7)>], "
+                         "[Move<X,f(7, 2),t(1, 8)>], [Move<X,f(7, 2),t(0, 9)>], [Move<X,f(7, 2),t(8, 3)>], "
+                         "[Move<X,f(7, 2),t(9, 4)>]]", str(b.legal_moves()))
+
+    def test_move_king_black_blocked(self):
+        b = Board()
+        b.set_board(",,.....O....,,...o......,........o.")
+        b.color = checkers.BLACK
+        self.assertEqual("[[Move<O,f(5, 2),t(4, 1)>], [Move<O,f(5, 2),t(3, 0)>], [Move<O,f(5, 2),t(6, 1)>], "
+                         "[Move<O,f(5, 2),t(7, 0)>], [Move<O,f(5, 2),t(4, 3)>], [Move<O,f(5, 2),t(6, 3)>], "
+                         "[Move<O,f(5, 2),t(7, 4)>], [Move<o,f(3, 4),t(2, 5)>], [Move<o,f(3, 4),t(4, 5)>], "
+                         "[Move<o,f(8, 5),t(7, 6)>], [Move<o,f(8, 5),t(9, 6)>]]", str(b.legal_moves()))
+
     def test_jump_white(self):
         b = Board()
         b.set_board(",,....o,...x")
@@ -188,6 +206,13 @@ class PushMovesTests(unittest.TestCase):
         self.assertEqual(",,,,,,,,,...O......", b.get_board())
         self.assertTrue(b.checker_at(3, 9).crowned)
         pass
+
+    def test_jump_crowning(self):
+        b = Board()
+        b.set_board("...,...o,....x")
+        b.push(b.legal_moves()[0])
+        self.assertEqual("..X.......,,,,,,,,,", b.get_board())
+        self.assertEqual("X", str(b.checker_at(2, 0)))
 
     def test_push_chain_crowning(self):
         # crowning can only happen if chain ended at the proper place (crowning can't happen in the middle of the chain)
