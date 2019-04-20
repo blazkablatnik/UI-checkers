@@ -3,16 +3,9 @@ from checkers import Board
 b = Board()
 b.set_board("..........,.o........,..........,.o........,..x.......,..........,..........,..........,..........,..........")
 print(b)
-for move in b.legal_moves():
-    print("\n")
+while len(b.legal_moves()) > 0:
     print("-------------------")
-    print("\n")
-    for m in move:
-        print(m)
-        print(b.push([m]))
-        print("\n")
-
-for i in range(1000):
-    print("---")
-    b.push(b.legal_moves()[0])
+    m = b.legal_moves()[0]
+    b.push(m)
+    print(m)
     print(b)
