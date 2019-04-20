@@ -155,6 +155,21 @@ class LegalMovesTests(unittest.TestCase):
         self.assertIsNotNone(b.checker_at(3, 1))
         self.assertIsNotNone(b.checker_at(5, 1))
 
+    def test_crowned_jump(self):
+        b = Board()
+        b.set_board(",,,,o.........,.o.....o..,,,....X.....,")
+        self.assertEqual("[[Move<X,f(4, 8),t(8, 4)>], [Move<X,f(4, 8),t(9, 3)>]]", str(b.legal_moves()))
+
+    def test_crowned_double_jump(self):
+        b = Board()
+        b.set_board(",,......o...,,....o.....,,....o.....,,..X.......,")
+        self.assertEqual("[[Move<X,f(2, 8),t(5, 5)>, Move<X,f(5, 5),t(3, 3)>], "
+                         "[Move<X,f(2, 8),t(5, 5)>, Move<X,f(5, 5),t(2, 2)>], "
+                         "[Move<X,f(2, 8),t(5, 5)>, Move<X,f(5, 5),t(1, 1)>], "
+                         "[Move<X,f(2, 8),t(5, 5)>, Move<X,f(5, 5),t(0, 0)>], "
+                         "[Move<X,f(2, 8),t(7, 3)>, Move<X,f(7, 3),t(5, 1)>], "
+                         "[Move<X,f(2, 8),t(7, 3)>, Move<X,f(7, 3),t(4, 0)>]]", str(b.legal_moves()))
+
 
 class PushMovesTests(unittest.TestCase):
     def test_push_simple(self):
@@ -216,14 +231,21 @@ class PushMovesTests(unittest.TestCase):
 
     def test_push_chain_crowning(self):
         # crowning can only happen if chain ended at the proper place (crowning can't happen in the middle of the chain)
-        # TODO
-        self.assertTrue(False)
+        b = Board()
+        b.set_board(",......o...,,....o.....,...x......")
+        b.push(b.legal_moves()[0])
+        self.assertIsNotNone(b.checker_at(7, 0))
+        self.assertTrue(b.checker_at(7, 0).crowned)
         pass
 
     def test_push_chain_no_crowning(self):
-        # TODO
-        self.assertTrue(False)
+        b = Board()
+        b.set_board(",......o.o.,,....o.....,...x......")
+        b.push(b.legal_moves()[0])
+        self.assertIsNotNone(b.checker_at(9, 2))
+        self.assertFalse(b.checker_at(9, 2).crowned)
         pass
+
 
 class SomeTests(unittest.TestCase):
     def test1(self):

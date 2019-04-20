@@ -43,7 +43,7 @@ class Move:
     is_promotion: bool
     removed_checker: Checker
 
-    def __init__(self, ch: Checker, xf: int, yf: int, xt: int, yt: int, prom: bool = False, removed: Checker = None):
+    def __init__(self, ch: Checker, from_pos: (int, int), to_pos: (int, int), prom: bool = False, removed: (int, int, Checker) = None):
         """
         :param ch: Checker that is moving
         :param xf: from x
@@ -54,8 +54,8 @@ class Move:
         :param removed: Checker that was removed with a jump, or None of jump was not made
         """
         self.checker = ch
-        self.move_from = (xf, yf)
-        self.move_to = (xt, yt)
+        self.move_from = from_pos
+        self.move_to = to_pos
         self.is_promotion = prom
         self.removed_checker = removed
 
@@ -200,11 +200,11 @@ class Board:
                         if self.color == WHITE:
                             for (nx, ny) in [(x-1, y-1), (x+1, y-1)]:
                                 if is_position_on_board(nx, ny) and self.checker_at(nx, ny) is None:
-                                    normal_moves.append([Move(checker, x, y, nx, ny, prom=will_get_crowned(checker.color, ny))])
+                                    normal_moves.append([Move(checker, from_pos=(x, y), to_pos=(nx, ny), prom=will_get_crowned(checker.color, ny))])
                         else:
                             for (nx, ny) in [(x-1, y+1), (x+1, y+1)]:
                                 if is_position_on_board(nx, ny) and self.checker_at(nx, ny) is None:
-                                    normal_moves.append([Move(checker, x, y, nx, ny, prom=will_get_crowned(checker.color, ny))])
+                                    normal_moves.append([Move(checker, from_pos=(x, y), to_pos=(nx, ny), prom=will_get_crowned(checker.color, ny))])
                     else: # checker.crowned
                         # crowned checkers can move along diagonal, however they can't jump over their own checkers
                         # (if checkers on diagonal are of other color, that's classified as jump and not a normal move!)
@@ -213,11 +213,15 @@ class Board:
                         for (nx, ny) in [(-1, -1), (+1, -1), (-1, +1), (+1, +1)]:
                             tx, ty = x, y
                             while 0 < tx < 9 and 0 < ty < 9:
+                                # walk all four diagonal ways until border or checker
                                 tx = tx + nx
                                 ty = ty + ny
                                 if self.checker_at(tx, ty) is not None:
                                     break
-                                normal_moves.append([Move(checker, x, y, tx, ty, prom=will_get_crowned(checker.color, ty))])
+                                normal_moves.append([Move(checker, from_pos=(x, y), to_pos=(tx, ty), prom=will_get_crowned(checker.color, ty))])
+
+            pass # end of for loops
+        pass
 
         if len(longest_jump_chains_global[0]) > 0:
             for chain in longest_jump_chains_global:
@@ -246,12 +250,9 @@ class Board:
 
         # remove all jumped opponent's checkers
         for m in move:
-            mfx, mfy = m.move_from
-            mtx, mty = m.move_to
-            if abs(mfx - mtx) == 2:
-                atk_x = (mfx + mtx) // 2
-                atk_y = (mfy + mty) // 2
-                del self.state[atk_y][atk_x]
+            if m.removed_checker is not None:
+                rem_x, rem_y, rem_chk = m.removed_checker[0], m.removed_checker[1], m.removed_checker[2]
+                del self.state[rem_y][rem_x]
 
         # set checker crowned if last move in chain is promotion
         if move[-1].is_promotion:
@@ -278,11 +279,8 @@ class Board:
         # restore all jumped opponent's checkers
         for m in move:
             if m.removed_checker is not None:
-                mfx, mfy = m.move_from
-                mtx, mty = m.move_to
-                atk_x = (mfx + mtx) / 2
-                atk_y = (mfy + mty) / 2
-                self.state[atk_y][atk_x] = m.removed_checker
+                rem_x, rem_y, rem_chk = m.removed_checker[0], m.removed_checker[1], m.removed_checker[2]
+                self.state[rem_y][rem_x] = rem_chk
 
         # set checker not crowned if last move in chain was promotion
         if move[-1].is_promotion:
@@ -326,9 +324,10 @@ def get_diagonal_positions(x: int, y: int):
     d2 = [(x, y) for (x, y) in zip(range(0, 10), range(y + x, -1, -1))]
     return d1 + d2
 
+
 def can_perform_jump(board: Board, x: int, y: int, jx: int, jy: int) -> bool:
     """
-    Checks for all possible conditions if jump can be performed from (x,y) to (jx,jy).
+    Checks for all possible conditions if non-crowned jump can be performed from (x,y) to (jx,jy).
     """
     checker = board.checker_at(x, y)
     if checker is None:
@@ -339,23 +338,17 @@ def can_perform_jump(board: Board, x: int, y: int, jx: int, jy: int) -> bool:
         # jump can only be performed if the goal position is free
         return False
 
-    if not checker.crowned:
-        # non-crowned checker can only jump over one field
-        if (jx, jy) not in [(x-2, y-2), (x-2, y+2), (x+2, y-2), (x+2, y+2)]:
-            return False
+    # non-crowned checker can only jump over one field
+    if (jx, jy) not in [(x-2, y-2), (x-2, y+2), (x+2, y-2), (x+2, y+2)]:
+        return False
 
-        # jump can only be performed if the field between start and goal has a checker of other color
-        ox, oy = (x + jx) // 2, (y + jy) // 2
-        other_checker = board.checker_at(ox, oy)
-        if other_checker is not None and other_checker.color != checker.color:
-            return True
-        else:
-            return False
-
-    else: # checker.crowned
-        # jump can be performed if there's checker of other color on crowned checker's diagonal
-        # TODO: crowned checkers can jump any distance, stopping anywhere beyond the diagonal of last jumped checker
-        pass
+    # jump can only be performed if the field between start and goal has a checker of other color
+    ox, oy = (x + jx) // 2, (y + jy) // 2
+    other_checker = board.checker_at(ox, oy)
+    if other_checker is not None and other_checker.color != checker.color:
+        return True
+    else:
+        return False
 
 
 def get_possible_jumps(board: Board, x: int, y: int) -> List[Move]:
@@ -374,11 +367,29 @@ def get_possible_jumps(board: Board, x: int, y: int) -> List[Move]:
         # Positions in list: [upper-left, bottom-left, upper-right, bottom-right]
         for (jx, jy) in [(x-2, y-2), (x-2, y+2), (x+2, y-2), (x+2, y+2)]:
             if is_position_on_board(jx, jy) and can_perform_jump(board, x, y, jx, jy):
-                jumped_checker = board.checker_at((x + jx) // 2, (y + jy) // 2)
-                moves.append(Move(chk, x, y, jx, jy, removed=jumped_checker))
+                rx, ry = (x + jx) // 2, (y + jy) // 2
+                jumped_checker = board.checker_at(rx, ry)
+                moves.append(Move(chk, from_pos=(x, y), to_pos=(jx, jy), removed=(rx, ry, jumped_checker)))
 
     else:
-        # TODO crowned jumps
+        # [up-left, up-right, down-left, down-right]
+        for (nx, ny) in [(-1, -1), (+1, -1), (-1, +1), (+1, +1)]:
+            tx, ty = x, y
+            jchk = None
+            while 0 < tx < 9 and 0 < ty < 9:
+                # walk all four diagonal ways until border or checker
+                tx = tx + nx
+                ty = ty + ny
+                tchk = board.checker_at(tx, ty)
+                if tchk is not None:
+                    if tchk.color == chk.color or jchk is not None:
+                        break # can't jump over own checkers or over two checkers, stop
+                    else:
+                        jchk = (tx, ty, tchk) # can jump over checker, store checker for removal
+                        continue
+
+                if jchk is not None:
+                        moves.append(Move(chk, from_pos=(x, y), to_pos=(tx, ty), removed=jchk))
         pass
 
     return moves
