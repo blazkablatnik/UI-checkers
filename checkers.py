@@ -25,6 +25,9 @@ class Checker:
         else:
             return "O" if self.crowned else "o"
 
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, Checker) and self.color == o.color and self.crowned == o.crowned
+
     def set_crowned(self, w):
         self.crowned = w
         return self
@@ -169,6 +172,17 @@ class Board:
 
         self.move_stack.clear()
         self.color = WHITE
+
+    def get_checkers(self):
+        """
+        Returns a list of all checkers on board as a list of tuples (x, y, Checker)
+        :return:
+        """
+        ret = []
+        for y, rows in list(self.state.items()):
+            for x, checker in list(rows.items()):
+                ret.append((x, y, checker))
+        return ret
 
     def legal_moves(self):
         """

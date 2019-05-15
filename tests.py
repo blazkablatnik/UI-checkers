@@ -1,7 +1,7 @@
 import unittest
 
 import checkers
-from checkers import Board
+from checkers import Board, Checker, WHITE, BLACK
 
 
 class NotationTests(unittest.TestCase):
@@ -50,6 +50,29 @@ class NotationTests(unittest.TestCase):
         b.set_board(bstr)
         self.assertEqual(",,,,...x.x.o..,o.o.x.....,,,,", b.get_board())
 
+
+class GetCheckersTest(unittest.TestCase):
+
+    def test_1(self):
+        bstr = "x"
+        b = Board()
+        b.set_board(bstr)
+        # https://docs.python.org/3.2/library/unittest.html#unittest.TestCase.assertCountEqual
+        # tests if list have same elements
+        self.assertCountEqual([(0, 0, Checker(WHITE))], b.get_checkers())
+
+    def test_2(self):
+        bstr = ".....o"
+        b = Board()
+        b.set_board(bstr)
+        self.assertCountEqual([(5, 0, Checker(BLACK))], b.get_checkers())
+
+    def test_3(self):
+        bstr = "...o......,....x.....,.....x....,..o...o..."
+        b = Board()
+        b.set_board(bstr)
+        self.assertCountEqual([(3, 0, Checker(BLACK)), (2, 3, Checker(BLACK)), (6, 3, Checker(BLACK)),
+                               (4, 1, Checker(WHITE)), (5, 2, Checker(WHITE))], b.get_checkers())
 
 class TurnTests(unittest.TestCase):
     def test_turns(self):
