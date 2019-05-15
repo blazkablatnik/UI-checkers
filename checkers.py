@@ -19,14 +19,14 @@ class Checker:
         self.color = color
         self.crowned = crowned
 
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, Checker) and self.color == o.color and self.crowned == o.crowned
+
     def __str__(self):
         if self.color == WHITE:
             return "X" if self.crowned else "x"
         else:
             return "O" if self.crowned else "o"
-
-    def __eq__(self, o: object) -> bool:
-        return isinstance(o, Checker) and self.color == o.color and self.crowned == o.crowned
 
     def set_crowned(self, w):
         self.crowned = w
@@ -59,6 +59,11 @@ class Move:
         self.move_to: (int, int) = to_pos
         self.is_promotion: bool = prom
         self.removed_checker: (int, int, Checker) = removed
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, Move) and self.checker == o.checker and self.move_from == self.move_from and \
+               self.move_to == o.move_to and self.is_promotion == o.is_promotion and \
+               self.removed_checker == o.removed_checker
 
     def __str__(self):
         return self.__repr__()
@@ -227,11 +232,13 @@ class Board:
                         # [up-left, up-right, down-left, down-right]
                         for (nx, ny) in [(-1, -1), (+1, -1), (-1, +1), (+1, +1)]:
                             tx, ty = x, y
-                            while 0 < tx < 9 and 0 < ty < 9:
+                            while 0 <= tx <= 9 and 0 <= ty <= 9:
                                 # walk all four diagonal ways until border or checker
                                 tx = tx + nx
                                 ty = ty + ny
-                                if self.checker_at(tx, ty) is not None:
+
+                                # if over the border or blocked by a checker, stop
+                                if not is_position_on_board(tx, ty) or self.checker_at(tx, ty) is not None:
                                     break
                                 normal_moves.append([Move(checker, from_pos=(x, y), to_pos=(tx, ty),
                                                           prom=will_get_crowned(checker.color, ty))])
@@ -393,10 +400,13 @@ def get_possible_jumps(board: Board, x: int, y: int) -> List[Move]:
         for (nx, ny) in [(-1, -1), (+1, -1), (-1, +1), (+1, +1)]:
             tx, ty = x, y
             jchk = None
-            while 0 < tx < 9 and 0 < ty < 9:
+            while 0 <= tx <= 9 and 0 <= ty <= 9:
                 # walk all four diagonal ways until border or checker
                 tx = tx + nx
                 ty = ty + ny
+                if not is_position_on_board(tx, ty):
+                    break
+
                 tchk = board.checker_at(tx, ty)
                 if tchk is not None:
                     if tchk.color == chk.color or jchk is not None:

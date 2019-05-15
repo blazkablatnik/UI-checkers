@@ -1,7 +1,7 @@
 import unittest
 
 import checkers
-from checkers import Board, Checker, WHITE, BLACK
+from checkers import Board, Checker, Move, WHITE, BLACK
 
 
 class NotationTests(unittest.TestCase):
@@ -74,6 +74,7 @@ class GetCheckersTest(unittest.TestCase):
         self.assertCountEqual([(3, 0, Checker(BLACK)), (2, 3, Checker(BLACK)), (6, 3, Checker(BLACK)),
                                (4, 1, Checker(WHITE)), (5, 2, Checker(WHITE))], b.get_checkers())
 
+
 class TurnTests(unittest.TestCase):
     def test_turns(self):
         b = Board()
@@ -98,6 +99,11 @@ class TurnTests(unittest.TestCase):
 
 
 class LegalMovesTests(unittest.TestCase):
+
+    def __init__(self, methodName: str = ...) -> None:
+        super().__init__(methodName)
+        # self.maxDiff = None
+
     def test_move_white(self):
         b = Board()
         b.set_board(",,,,,,.x")
@@ -117,6 +123,28 @@ class LegalMovesTests(unittest.TestCase):
                          "[Move<X,f(7, 2),t(4, 5)>], [Move<X,f(7, 2),t(3, 6)>], [Move<X,f(7, 2),t(2, 7)>], "
                          "[Move<X,f(7, 2),t(1, 8)>], [Move<X,f(7, 2),t(0, 9)>], [Move<X,f(7, 2),t(8, 3)>], "
                          "[Move<X,f(7, 2),t(9, 4)>]]", str(b.legal_moves()))
+
+    def test_move_two_kings_white(self):
+        b = Board()
+        b.set_board(".......X.X")
+        wc = Checker(WHITE, True) # white, crowned checker (X)
+        self.assertCountEqual([[Move(wc, (7, 0), (6, 1))], [Move(wc, (7, 0), (5, 2))], [Move(wc, (7, 0), (4, 3))],
+                               [Move(wc, (7, 0), (3, 4))], [Move(wc, (7, 0), (2, 5))], [Move(wc, (7, 0), (1, 6))],
+                               [Move(wc, (7, 0), (0, 7))], [Move(wc, (7, 0), (8, 1))], [Move(wc, (7, 0), (9, 2))],
+                               [Move(wc, (9, 0), (8, 1))], [Move(wc, (9, 0), (7, 2))], [Move(wc, (9, 0), (6, 3))],
+                               [Move(wc, (9, 0), (5, 4))], [Move(wc, (9, 0), (4, 5))], [Move(wc, (9, 0), (3, 6))],
+                               [Move(wc, (9, 0), (2, 7))], [Move(wc, (9, 0), (1, 8))], [Move(wc, (9, 0), (0, 9))],
+                               ], b.legal_moves())
+
+    def test_move_king_black_corner(self):
+        b = Board()
+        b.set_board(",,,,,,,,,.........O")
+        b.color = BLACK
+        bc = Checker(BLACK, True)
+        self.assertCountEqual([[Move(bc, (9, 9), (8, 8))], [Move(bc, (9, 9), (7, 7))], [Move(bc, (9, 9), (6, 6))],
+                               [Move(bc, (9, 9), (5, 5))], [Move(bc, (9, 9), (4, 4))], [Move(bc, (9, 9), (3, 3))],
+                               [Move(bc, (9, 9), (2, 2))], [Move(bc, (9, 9), (1, 1))], [Move(bc, (9, 9), (0, 0))],
+                               ], b.legal_moves())
 
     def test_move_king_black_blocked(self):
         b = Board()
