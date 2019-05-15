@@ -323,6 +323,17 @@ class PushPopMovesTests(unittest.TestCase):
         self.assertFalse(b.checker_at(3, 4).crowned)
         pass
 
+    def test_push_jump_chain_end_on_jumped(self):
+        b = Board()
+        b.set_board(",,,,,....x.x...,.x.x......,......x.x.,.x........,..O.......")
+        b.color = BLACK
+        print(b.legal_moves()[0])
+        b.push(b.legal_moves()[0])
+        self.assertEqual(",,,,,,...O......,,,", b.get_board())
+        b.pop()
+        self.assertEqual(",,,,,....x.x...,.x.x......,......x.x.,.x........,..O.......", b.get_board())
+
+
 
 class SomeTests(unittest.TestCase):
     def test1(self):
