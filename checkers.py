@@ -266,16 +266,17 @@ class Board:
         fx, fy = move[0].move_from
         tx, ty = move[-1].move_to
         chk = move[0].checker
-        # remove checker from starting position
-        del self.state[fy][fx]
-        # place checker at ending position
-        self.state[ty][tx] = chk
 
         # remove all jumped opponent's checkers
         for m in move:
             if m.removed_checker is not None:
                 rem_x, rem_y, rem_chk = m.removed_checker
                 del self.state[rem_y][rem_x]
+
+        # pick up checker from starting position...
+        del self.state[fy][fx]
+        # ... and place it at ending position
+        self.state[ty][tx] = chk
 
         # set checker crowned if last move in chain is promotion
         if move[-1].is_promotion:
@@ -294,7 +295,8 @@ class Board:
         fx, fy = move[0].move_from
         tx, ty = move[-1].move_to
         chk = move[-1].checker
-        # remove checker from ending position
+
+        # pick up checker from ending position...
         del self.state[ty][tx]
         # ... and place it back on starting position
         self.state[fy][fx] = chk

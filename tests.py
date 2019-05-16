@@ -222,18 +222,22 @@ class LegalMovesTests(unittest.TestCase):
                          "[Move<X,f(2, 8),t(7, 3)>, Move<X,f(7, 3),t(4, 0)>]]", str(b.legal_moves()))
 
 
-class PushMovesTests(unittest.TestCase):
+class PushPopMovesTests(unittest.TestCase):
     def test_push_simple(self):
         b = Board()
         b.set_board(",,,,,,.x........,,,")
         b.push(b.legal_moves()[0])
         self.assertEqual(",,,,,x.........,,,,", b.get_board())
+        b.pop()
+        self.assertEqual(",,,,,,.x........,,,", b.get_board())
 
         b = Board()
         b.set_board(",,....o.....,,,,,,,")
         b.color = checkers.BLACK
         b.push(b.legal_moves()[0])
         self.assertEqual(",,,...o......,,,,,,", b.get_board())
+        b.pop()
+        self.assertEqual(",,....o.....,,,,,,,", b.get_board())
         pass
 
     def test_push_jump(self):
@@ -242,6 +246,9 @@ class PushMovesTests(unittest.TestCase):
         b.push(b.legal_moves()[0])
         self.assertIsNone(b.checker_at(4, 2))
         self.assertEqual(",.....x....,,,,,,,,", b.get_board())
+        b.pop()
+        self.assertIsNotNone(b.checker_at(4, 2))
+        self.assertEqual(",,....o.....,...x......,,,,,,", b.get_board())
 
         b = Board()
         b.set_board(",,,,......x...,.....o....,,,,")
@@ -249,6 +256,9 @@ class PushMovesTests(unittest.TestCase):
         b.push(b.legal_moves()[0])
         self.assertIsNone(b.checker_at(6, 4))
         self.assertEqual(",,,.......o..,,,,,,", b.get_board())
+        b.pop()
+        self.assertIsNotNone(b.checker_at(6, 4))
+        self.assertEqual(",,,,......x...,.....o....,,,,", b.get_board())
         pass
 
     def test_push_jump_chain(self):
@@ -256,6 +266,8 @@ class PushMovesTests(unittest.TestCase):
         b.set_board(",...,.o.o,.....,.o...o,.......,...o...o,....x....,.o.o,...")
         b.push(b.legal_moves()[0])
         self.assertEqual(",,,,,,,........x.,.o.o......,", b.get_board())
+        b.pop()
+        self.assertEqual(",,.o.o......,,.o...o....,,...o...o..,....x.....,.o.o......,", b.get_board())
         pass
 
     def test_push_crowning(self):
@@ -271,6 +283,9 @@ class PushMovesTests(unittest.TestCase):
         b.push(b.legal_moves()[0])
         self.assertEqual(",,,,,,,,,...O......", b.get_board())
         self.assertTrue(b.checker_at(3, 9).crowned)
+        b.pop()
+        self.assertEqual(",,,,,,,,....o.....,", b.get_board())
+        self.assertFalse(b.checker_at(4, 8).crowned)
         pass
 
     def test_jump_crowning(self):
@@ -278,7 +293,10 @@ class PushMovesTests(unittest.TestCase):
         b.set_board("...,...o,....x")
         b.push(b.legal_moves()[0])
         self.assertEqual("..X.......,,,,,,,,,", b.get_board())
-        self.assertEqual("X", str(b.checker_at(2, 0)))
+        self.assertEqual(Checker(WHITE, True), b.checker_at(2, 0))
+        b.pop()
+        self.assertEqual(",...o......,....x.....,,,,,,,", b.get_board())
+        self.assertEqual(Checker(WHITE, False), b.checker_at(4, 2))
 
     def test_push_chain_crowning(self):
         # crowning can only happen if chain ended at the proper place (crowning can't happen in the middle of the chain)
@@ -287,6 +305,10 @@ class PushMovesTests(unittest.TestCase):
         b.push(b.legal_moves()[0])
         self.assertIsNotNone(b.checker_at(7, 0))
         self.assertTrue(b.checker_at(7, 0).crowned)
+        b.pop()
+        self.assertEqual(",......o...,,....o.....,...x......,,,,,", b.get_board())
+        self.assertIsNone(b.checker_at(7, 0))
+        self.assertFalse(b.checker_at(3, 4).crowned)
         pass
 
     def test_push_chain_no_crowning(self):
@@ -295,7 +317,22 @@ class PushMovesTests(unittest.TestCase):
         b.push(b.legal_moves()[0])
         self.assertIsNotNone(b.checker_at(9, 2))
         self.assertFalse(b.checker_at(9, 2).crowned)
+        b.pop()
+        self.assertEqual(",......o.o.,,....o.....,...x......,,,,,", b.get_board())
+        self.assertIsNone(b.checker_at(9, 2))
+        self.assertFalse(b.checker_at(3, 4).crowned)
         pass
+
+    def test_push_jump_chain_end_on_jumped(self):
+        b = Board()
+        b.set_board(",,,,,....x.x...,.x.x......,......x.x.,.x........,..O.......")
+        b.color = BLACK
+        print(b.legal_moves()[0])
+        b.push(b.legal_moves()[0])
+        self.assertEqual(",,,,,,...O......,,,", b.get_board())
+        b.pop()
+        self.assertEqual(",,,,,....x.x...,.x.x......,......x.x.,.x........,..O.......", b.get_board())
+
 
 
 class SomeTests(unittest.TestCase):
