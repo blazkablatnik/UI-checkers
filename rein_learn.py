@@ -84,6 +84,6 @@ if(learning):
             s = "state"
             a = "action"
             r = "reward"
-            Q[s][a] = (1 - _alpha) * Q[s][a] + _alpha * (r + _delta * max( s+1 , a))
+            Q[s][a] = (1 - _alpha) * Q[s][a] + _alpha * (r + _delta * max( s+1 , A))
             pass
 
