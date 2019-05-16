@@ -53,7 +53,10 @@ from checkers import Board, WHITE
 # - has the effect of valuing rewards received earlier higher than those received later
 #  (reflecting the value of a "good start")
 # - may also be interpreted as the probability to succeed (or survive) at every step
-_delta = 0.9
+_delta = 0.1
+
+# Learning rate (0 <= _alpha <= 1)
+_alpha = 0.9
 
 # Number of learning iterations
 nmb_of_learning_iterations = 0
@@ -67,7 +70,7 @@ S = []
 # Actions
 A = []
 
-# Q-table
+# Q-table -> Q[State][Action]
 Q = [[0 for i in range(len(A))] for i in range(len(S))]
 
 
@@ -77,6 +80,10 @@ if(learning):
         # Init board
         board = Board()
 
-        while():
+        while("game not lost"):
+            s = "state"
+            a = "action"
+            r = "reward"
+            Q[s][a] = (1 - _alpha) * Q[s][a] + _alpha * (r + _delta * max( s+1 , a))
             pass
 
