@@ -28,11 +28,6 @@ class Checker:
         else:
             return "O" if self.crowned else "o"
 
-    def set_crowned(self, w):
-        self.crowned = w
-        return self
-
-
 class Move:
     """
     Move denotes a change in position for a checker from position (fx, fy) to position (tx, ty).
@@ -100,6 +95,9 @@ class Board:
         self.clear_board()
         self.set_board(".o.o.o.o.o,o.o.o.o.o.,.o.o.o.o.o,o.o.o.o.o.,,,.x.x.x.x.x,x.x.x.x.x.,.x.x.x.x.x,x.x.x.x.x.")
 
+    def __hash__(self) -> int:
+        return hash(hash(self.get_board()) + hash(self.color))
+
     def __str__(self):
         """
         A nice output of the board. For checkers notation output, use get_board()!
@@ -112,7 +110,7 @@ class Board:
                     s += str(self.state[y][x]) + " "
                 else:
                     s += ". "
-            s += "\n"
+            if y < 9: s += "\n"
         return s
 
     def set_board(self, notation: str):
@@ -219,12 +217,12 @@ class Board:
                             for (nx, ny) in [(x - 1, y - 1), (x + 1, y - 1)]:
                                 if is_position_on_board(nx, ny) and self.checker_at(nx, ny) is None:
                                     normal_moves.append([Move(checker, from_pos=(x, y), to_pos=(nx, ny),
-                                                              prom=will_get_crowned(checker.color, ny))])
+                                                              prom=will_get_crowned(checker, ny))])
                         else:
                             for (nx, ny) in [(x - 1, y + 1), (x + 1, y + 1)]:
                                 if is_position_on_board(nx, ny) and self.checker_at(nx, ny) is None:
                                     normal_moves.append([Move(checker, from_pos=(x, y), to_pos=(nx, ny),
-                                                              prom=will_get_crowned(checker.color, ny))])
+                                                              prom=will_get_crowned(checker, ny))])
                     else:  # checker.crowned
                         # crowned checkers can move along diagonal, however they can't jump over their own checkers
                         # (if checkers on diagonal are of other color, that's classified as jump and not a normal move!)
@@ -241,7 +239,7 @@ class Board:
                                 if not is_position_on_board(tx, ty) or self.checker_at(tx, ty) is not None:
                                     break
                                 normal_moves.append([Move(checker, from_pos=(x, y), to_pos=(tx, ty),
-                                                          prom=will_get_crowned(checker.color, ty))])
+                                                          prom=will_get_crowned(checker, ty))])
 
             pass  # end of for loops
         pass
@@ -250,7 +248,7 @@ class Board:
             for chain in longest_jump_chains_global:
                 # last move in a chain can result in crowning
                 last_move = chain[-1]
-                last_move.is_promotion = will_get_crowned(last_move.checker.color, last_move.move_to[1])
+                last_move.is_promotion = will_get_crowned(last_move.checker, last_move.move_to[1])
             return longest_jump_chains_global
 
         return normal_moves
@@ -327,15 +325,18 @@ def is_position_on_board(x, y) -> bool:
     return 0 <= x < 10 and 0 <= y < 10
 
 
-def will_get_crowned(color: bool, y: int) -> bool:
+def will_get_crowned(checker: Checker, y: int) -> bool:
     """
-    :param color:
+    :param checker:
     :param y:
     :return: True if moving into row Y with color can result into crowning
     """
-    if color and y == 0:
+    if checker.crowned:
+        return False
+
+    if checker.color and y == 0:
         return True
-    if not color and y == 9:
+    if not checker.color and y == 9:
         return True
     return False
 
