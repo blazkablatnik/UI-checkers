@@ -333,6 +333,33 @@ class PushPopMovesTests(unittest.TestCase):
         b.pop()
         self.assertEqual(",,,,,....x.x...,.x.x......,......x.x.,.x........,..O.......", b.get_board())
 
+    def test_promotion_pop(self):
+        b = Board()
+        b.set_board(",x")
+        b.push(b.legal_moves()[0])
+        chk = Checker(WHITE, True)
+        self.assertTrue(b.move_stack[-1][-1].is_promotion)
+        self.assertEqual(b.checker_at(1, 0), chk)
+        b.push([Move(chk, (1, 0), (5, 4))])
+        self.assertEqual(b.checker_at(5, 4), chk)
+        b.pop()
+        self.assertEqual(b.checker_at(1, 0), Checker(WHITE, True))
+        b.pop()
+        self.assertEqual(b.checker_at(0, 1), Checker(WHITE, False))
+
+    def test_border_twice(self):
+        b = Board()
+        b.set_board("...X")
+        cx = Checker(WHITE, True)
+        b.push([Move(cx, (3, 0), (5, 2))])
+        self.assertTrue(True, cx.crowned)
+        b.push([Move(cx, (5, 2), (7, 0))])
+        self.assertTrue(True, cx.crowned)
+        b.pop()
+        self.assertTrue(True, cx.crowned)
+        b.pop()
+        self.assertTrue(True, cx.crowned)
+
 
 
 class SomeTests(unittest.TestCase):
