@@ -1,7 +1,9 @@
 import copy
 
+import sys
+
 from checkers import Board, Move
-from random import randint, random
+from random import randint, uniform
 from alphabeta import alpha_beta_search
 
 # ~ Player 1 is us ~
@@ -63,7 +65,7 @@ _delta = 0.1
 _alpha = 0.9
 
 # Number of learning iterations
-nmb_of_learning_iterations = 0
+nmb_of_learning_iterations = 10
 
 # Switch for learning
 learning = True
@@ -124,6 +126,13 @@ def get_pics_on_edge(pics_mark, king_mark, board):
             counter += 1
     return counter
 
+def have_we_won(board: Board):
+    board_str = board.get_board()
+    n_we = board_str.count(our_pics) + board_str.count(our_kings)
+    n_they = board_str.count(their_pics) + board_str.count(their_kings)
+
+    return n_we >= n_they
+
 
 def get_state(move: Move, board: Board):
     board.push(move)
@@ -148,12 +157,14 @@ def get_state(move: Move, board: Board):
 
 def get_transitions(current_state: State, legal_moves, board: Board):
     transitions = {}
+    action_by_transition = {}
     for move in legal_moves:
         new_state = get_state(move, board)
         transiton_key = get_transition_key(current_state, new_state)
         transitions[transiton_key] = [current_state, new_state]
+        action_by_transition[transiton_key] = move
 
-    return transitions
+    return transitions, action_by_transition
 
 
 # Actions
@@ -168,7 +179,9 @@ T = {}
 
 # Exploration rate (0 <= ex_rate <= 1)
 # Rate at which AI tries to make new moves
-ex_rate = 0.5
+ex_rate = 0.8
+
+wins = 0
 
 if learning:
     for i in range(nmb_of_learning_iterations):
@@ -186,20 +199,36 @@ if learning:
 
             # Check if game over
             if len(legal_moves) <= 0:
-                print("prisel do konca")
-                # If we won
-                T[current_state][new_state.to_string()] *= 100
+                print("Prisel do konca")
 
+                # If we won
+                if have_we_won(board):
+                    T[current_state.to_string()][new_state.to_string()] *= 10
+                    print()
+                    print("--- ZMAGA JE NASA --")
+                    print()
+                    wins+=1
                 # If we lost
-                T[current_state][new_state.to_string()] *= -100
+                else:
+                    T[current_state.to_string()][new_state.to_string()] *= -10
+                    print()
+                    print("--- ZGUBILI SMO --")
+                    print()
                 break
 
-            # For every move calculate the state it produces
-            transitions = get_transitions(current_state, legal_moves, board)
+            # If only one move available: do it
+            if len(legal_moves) == 1:
+                pass
 
-            explore = random.uniform(0, 1) <= ex_rate
+
+            # For every move calculate the state it produces
+            board_copy = copy.deepcopy(board)
+            transitions, action_by_transition = get_transitions(current_state, legal_moves, board_copy)
+
+            explore = uniform(0, 1) <= ex_rate
 
             new_transitions = {}
+            chosen_transition_key = ""
 
             if not T:
                 # Empty dictionary: 100% explore
@@ -207,25 +236,38 @@ if learning:
                 explore = True
             else:
                 # If one or more transition is unknown, then explore or choose the highest value with ration ex_rate
-                max_value = 0
-                max_transition = []
+                max_value = -sys.maxsize -1
+                max_transition_to_state = None
+                has_known_transitions = False
 
                 for transition_key, states in transitions.items():
-                    if transition_key not in T:
+                    state_keys = get_from_and_to(transition_key)
+                    from_state_key = state_keys[0]
+                    to_state_key = state_keys[1]
+                    if from_state_key not in T or to_state_key not in T[from_state_key]:
                         new_transitions[transition_key] = states
-                    else:
-                        value = T[transition_key]
-                        if value > max_value:
-                            max_value = value
-                            max_transition_key = transition_key
+                        continue
 
-            if explore:
+                    value = T[from_state_key][to_state_key]
+
+                    if value > max_value:
+                        max_value = value
+                        chosen_transition_key = transition_key
+                        max_transition_to_state = states[1]
+                        has_known_transitions = True
+
+            if len(new_transitions) <= 0:
+                explore = False
+
+            if explore or not has_known_transitions:
                 # Choose random new transition
-                new_state = new_transitions.keys()[randint(0, len(new_transitions) - 1)]
+                new_state_key = list(new_transitions.keys())[randint(0, len(new_transitions) - 1)]
+                new_state = new_transitions[new_state_key][1]
                 old_transition_value = 0
+                chosen_transition_key = new_state_key
             else:
-                # Choose mac transition
-                new_state = max_transition
+                # Choose max transition
+                new_state = max_transition_to_state
                 old_transition_value = max_value
 
             value_of_transition = old_transition_value - new_state.get_value()
@@ -234,15 +276,56 @@ if learning:
             if new_state.to_string() not in T:
                 optimal_future_value = 0
             else:
-                key_of_max = max(T[new_state.to_string()].keys(), key=(lambda k: T[k]))
+                key_of_max = max(T[new_state.to_string()].keys(), key=(lambda k: T[new_state.to_string()][k]))
                 optimal_future_value = T[new_state.to_string()][key_of_max]
 
             # Now we update transition table:
             # new_value <- (1-_alpha)old_value + _alpha*(reward_for_transition + _delta*(max (all_new_potential_transitions - current_transition)))
-            T[current_state][new_state.to_string()] = old_transition_value + _alpha*value_of_transition + _delta*optimal_future_value
+            if current_state not in T:
+                T[current_state.to_string()] = {}
+
+            T[current_state.to_string()][new_state.to_string()] = old_transition_value + _alpha*value_of_transition + _delta*optimal_future_value
+
+            # Make move
+            move = action_by_transition[chosen_transition_key]
+            board.push(move)
+
+            print("Q-learn made a move:\n")
+            print(board)
+            print("----- ----- -----")
+
+
 
             # AlphaBeta makes move
             # !! important: work with this copy of a board to prevent
             # accidental changes to actual game state.
             board_copy = copy.deepcopy(board)
-            board.push(alpha_beta_search(board_copy, 4))
+            best_move = alpha_beta_search(board_copy, 4)
+            if best_move is not None:
+                board.push(best_move)
+            else:
+                print("Prisel do konca")
+                # If we won
+                if have_we_won(board):
+                    T[current_state.to_string()][new_state.to_string()] *= 10
+                    print()
+                    print("--- ZMAGA JE NASA --")
+                    print()
+                    wins += 1
+                # If we lost
+                else:
+                    T[current_state.to_string()][new_state.to_string()] *= -10
+                    print()
+                    print("--- ZGUBILI SMO --")
+                    print()
+                break
+
+            print("Alpha-Beta made a move:\n")
+            print(board)
+            print("----- ----- -----")
+
+
+print()
+print("*******************")
+print("Koncni score: "+ str(wins)+"/"+str(nmb_of_learning_iterations))
+print("*******************")
