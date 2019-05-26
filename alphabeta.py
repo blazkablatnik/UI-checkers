@@ -1,4 +1,5 @@
 import unittest
+from typing import Dict
 
 import math
 
@@ -24,7 +25,7 @@ def alpha_beta_search(board: Board, max_depth: int) -> Move:
     player_color = True
     for move in board.legal_moves():
         board.push(move)
-        value = _alpha_beta(board, player_color, max_depth, -INF, +INF, MAX)
+        value = _alpha_beta(board, {}, player_color, max_depth, -INF, +INF, MAX)
         board.pop()
 
         if value > best_value:
@@ -33,7 +34,7 @@ def alpha_beta_search(board: Board, max_depth: int) -> Move:
     return best_move
 
 
-def _alpha_beta(board: Board, color: bool, depth: int, alpha: int, beta: int, opt: bool):
+def _alpha_beta(board: Board, transpositions: Dict[int, int], color: bool, depth: int, alpha: int, beta: int, opt: bool):
     """
     Implementation of minimax with alpha-beta pruning follows the pseudo-code on Wikipedia:
     https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Pseudocode
@@ -46,6 +47,9 @@ def _alpha_beta(board: Board, color: bool, depth: int, alpha: int, beta: int, op
     :return:
     """
 
+    if hash(board) in transpositions:
+        return transpositions[hash(board)]
+
     # if reached max depth or there's no legal moves left, return board value
     if depth == 0 or len(board.legal_moves()) <= 0:
         return _board_value(board, color)
@@ -55,7 +59,8 @@ def _alpha_beta(board: Board, color: bool, depth: int, alpha: int, beta: int, op
         value = -INF
         for move in board.legal_moves():
             board.push(move)
-            value = max(value, _alpha_beta(board, color, depth - 1, alpha, beta, MIN))
+            value = max(value, _alpha_beta(board, transpositions, color, depth - 1, alpha, beta, MIN))
+            transpositions[hash(board)] = value
             board.pop()
 
             alpha = max(alpha, value)
@@ -69,7 +74,8 @@ def _alpha_beta(board: Board, color: bool, depth: int, alpha: int, beta: int, op
         value = +INF
         for move in board.legal_moves():
             board.push(move)
-            value = min(value, _alpha_beta(board, color, depth - 1, alpha, beta, MAX))
+            value = min(value, _alpha_beta(board, transpositions, color, depth - 1, alpha, beta, MAX))
+            transpositions[hash(board)] = value
             board.pop()
             beta = min(beta, value)
             if alpha >= beta:
